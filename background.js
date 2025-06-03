@@ -1,21 +1,23 @@
 const CSS = "body { border: 20px solid red; }";
-const TITLE_APPLY = "Apply CSS";
-const TITLE_REMOVE = "Remove CSS";
+const TITLE_ON = "show counts";
+const TITLE_OFF = "hide counts";
 const APPLICABLE_PROTOCOLS = ["http:", "https:"];
 
-// Toggle CSS: based on the current title, insert or remove the CSS and update the action
+// onClick handler
 function toggleCSS(tab) {
+  //const storedState = sessionStorage.getItem("backgroundState" + tab.id);
 
   function gotTitle(title) {
-    if (title === TITLE_APPLY) {
-      browser.pageAction.setIcon({tabId: tab.id, path: "icons/on.svg"});
-      browser.pageAction.setTitle({tabId: tab.id, title: TITLE_REMOVE});
+    const isTitleOn = title === TITLE_ON;
+    if (isTitleOn) {
       browser.tabs.insertCSS({code: CSS});
     } else {
-      browser.pageAction.setIcon({tabId: tab.id, path: "icons/off.svg"});
-      browser.pageAction.setTitle({tabId: tab.id, title: TITLE_APPLY});
       browser.tabs.removeCSS({code: CSS});
     }
+    browser.pageAction.setIcon({tabId: tab.id, path: isTitleOn ? "icons/on.svg" : "icons/off.svg"});
+    browser.pageAction.setTitle({tabId: tab.id, title: isTitleOn ? TITLE_OFF : TITLE_ON});
+    sessionStorage.setItem("backgroundState" + tab.id, isTitleOn ? TITLE_ON : TITLE_OFF);
+    browser.tabs.sendMessage(tab.id, {pageActionState: isTitleOn ? TITLE_ON : TITLE_OFF});
   }
 
   let gettingTitle = browser.pageAction.getTitle({tabId: tab.id});
@@ -31,8 +33,22 @@ function protocolIsApplicable(url) {
 // Initialize the page action: set icon and title, then show.
 function initializePageAction(tab) {
   if (protocolIsApplicable(tab.url) && tab.url.includes("moxfield.com")) {
-    browser.pageAction.setIcon({tabId: tab.id, path: "icons/off.svg"});
-    browser.pageAction.setTitle({tabId: tab.id, title: TITLE_APPLY});
+    const storedState = sessionStorage.getItem("backgroundState" + tab.id);
+
+    // initialize the state for the first time
+    if (storedState === null){
+      sessionStorage.setItem("backgroundState" + tab.id, TITLE_OFF);
+      storedState = TITLE_OFF;
+    }
+
+    const isStoredStateOn = storedState === TITLE_ON;
+    if (isStoredStateOn) {
+      browser.tabs.insertCSS({code: CSS});
+    } else {
+      browser.tabs.removeCSS({code: CSS});
+    }
+    browser.pageAction.setIcon({tabId: tab.id, path: isStoredStateOn ? "icons/on.svg" : "icons/off.svg"});
+    browser.pageAction.setTitle({tabId: tab.id, title: isStoredStateOn ? TITLE_OFF : TITLE_ON});
     browser.pageAction.show(tab.id);
   }
 }

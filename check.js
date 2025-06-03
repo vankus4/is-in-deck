@@ -40,6 +40,11 @@ const generateDeckUrl = (searchTerm) => {
   }
 
 const getResultsCountFromCard = async (cardName, token) => {
+    const storedState = sessionStorage.getItem("actionState");
+    if (storedState !== "show counts") {
+        return null;
+    }
+
     try {
         const url = 'https://api2.moxfield.com/v2/decks/personal/search?pageNumber=1&pageSize=64&sortType=name&sortDirection=descending&filter=' + cardName;
 
@@ -62,7 +67,7 @@ const getResultsCountFromCard = async (cardName, token) => {
 
     } catch (error) {
         console.error('Error fetching data from Moxfield API:', error);
-        return "";
+        return null;
     }
 }
 
@@ -94,10 +99,11 @@ const getBearerToken = async () => {
 const checkUsage = async (cardName, token) => {
     const url = generateDeckUrl(cardName);
     const deckCount = await getResultsCountFromCard(cardName, token);
+    const label = deckCount === null ? "? check" : `${deckCount} deck${deckCount === 1 ? "" : "s"}`;
 
     return {
         url,
-        label: `found in ${deckCount} deck${deckCount === 1 ? "" : "s"}`
+        label
     };
 }
 
@@ -118,12 +124,11 @@ const startMutationObserver = async (tbody) => {
     cardRows.forEach(row => showDeckCount(row, token));
 
     // extends header so it does not look broken
-    document.querySelector("thead tr")?.querySelectorAll("th")[10]?.insertAdjacentHTML("afterend", "<th>Deck Occurency</th>");
+    document.querySelector("thead tr")?.querySelectorAll("th")[10]?.insertAdjacentHTML("afterend", "<th>Deck Presence</th>");
 
     // create an observer to inject upon pagination/sort change
     const observer = new MutationObserver(async (mutationsList) => {
         const token = await getBearerToken();
-        console.log()
         mutationsList.filter(mutation => mutation.type === "childList")
             .forEach((mutation) => {
                 Array.from(mutation.addedNodes).filter(node => node.tagName === 'TR' && node.closest('tbody'))
@@ -148,6 +153,11 @@ const interval = setInterval(() => {
     }
 }, 500);
 
+browser.runtime.onMessage.addListener(message => {
+    if (message.pageActionState){
+        sessionStorage.setItem("actionState", message.pageActionState);
+    }
+})
 
 
 
