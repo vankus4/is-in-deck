@@ -1,0 +1,39 @@
+{
+  "manifest_version": 2,
+  "name": "is-in-deck",
+  "description": "checks if a card is in a deck",
+  "version": "1.0",
+  "homepage_url": "https://github.com/vankus4/is-in-deck",
+
+  "background": {
+    "matches": ["https://moxfield.com/collection*"],
+    "scripts": ["background.js"]
+  },
+
+  "page_action": {
+    "default_icon": "icons/off.svg"
+  },
+  
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "https://api2.moxfield.com/*",
+    "cookies"
+  ],
+  "content_security_policy": "script-src 'self'; object-src 'self';",
+
+  "content_scripts": [
+    {
+      "matches": ["https://moxfield.com/collection*"],
+      "js": ["check.js"],
+      "type": "module"
+    }
+  ],
+
+  
+  "browser_action": {
+    "default_popup": "opener.html",
+    "default_icon": "icons/senpai.jpg"
+  }
+
+}
