@@ -3,10 +3,7 @@ const TITLE_APPLY = "Apply CSS";
 const TITLE_REMOVE = "Remove CSS";
 const APPLICABLE_PROTOCOLS = ["http:", "https:"];
 
-/*
-Toggle CSS: based on the current title, insert or remove the CSS.
-Update the page action's title and icon to reflect its state.
-*/
+// Toggle CSS: based on the current title, insert or remove the CSS and update the action
 function toggleCSS(tab) {
 
   function gotTitle(title) {
@@ -25,19 +22,13 @@ function toggleCSS(tab) {
   gettingTitle.then(gotTitle);
 }
 
-/*
-Returns true only if the URL's protocol is in APPLICABLE_PROTOCOLS.
-Argument url must be a valid URL string.
-*/
+// Returns true only if the URL's protocol is in APPLICABLE_PROTOCOLS.
 function protocolIsApplicable(url) {
   const protocol = (new URL(url)).protocol;
   return APPLICABLE_PROTOCOLS.includes(protocol);
 }
 
-/*
-Initialize the page action: set icon and title, then show.
-Only operates on tabs whose URL's protocol is applicable.
-*/
+// Initialize the page action: set icon and title, then show.
 function initializePageAction(tab) {
   if (protocolIsApplicable(tab.url) && tab.url.includes("moxfield.com")) {
     browser.pageAction.setIcon({tabId: tab.id, path: "icons/off.svg"});
@@ -46,9 +37,7 @@ function initializePageAction(tab) {
   }
 }
 
-/*
-When first loaded, initialize the page action for all tabs.
-*/
+// When first loaded, initialize the page action for all tabs.
 let gettingAllTabs = browser.tabs.query({});
 gettingAllTabs.then((tabs) => {
   for (let tab of tabs) {
@@ -56,14 +45,10 @@ gettingAllTabs.then((tabs) => {
   }
 });
 
-/*
-Each time a tab is updated, reset the page action for that tab. This does not remove any added CSS by the action
-*/
+// Each time a tab is updated, initialize
 browser.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   initializePageAction(tab);
 });
 
-/*
-Toggle CSS when the page action is clicked.
-*/
+// Toggle CSS when the page action is clicked.
 browser.pageAction.onClicked.addListener(toggleCSS);
