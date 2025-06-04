@@ -170,11 +170,9 @@ const startMutationObserver = async (tbody) => {
     // first load
     const cardRows = tbody.querySelectorAll('tr');
     cardRows.forEach(row => showDeckCount(row, token, baseColumnCount));
-    console.log(3);
 
     // create an observer to inject upon pagination/sort change
     const observer = new MutationObserver(async (mutationsList) => {
-        console.log(2);
         const token = await getBearerToken();
         mutationsList.filter(mutation => mutation.type === "childList")
             .forEach((mutation) => {
@@ -210,10 +208,6 @@ browser.runtime.onMessage.addListener(async message => {
         const baseColumnCount = Array.from(document.querySelector("thead tr")?.querySelectorAll("th")).filter(th => th.outerHTML !== HEADER_HTML).length || 0;
         initHeader(baseColumnCount);
         const cardRows = document.querySelector("tbody").querySelectorAll('tr');
-        console.log(1);
         cardRows.forEach(row => showDeckCount(row, token, baseColumnCount));
     }
 })
-
-
-
