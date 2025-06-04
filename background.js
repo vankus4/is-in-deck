@@ -1,4 +1,3 @@
-const CSS = "body { border: 20px solid red; }";
 const TITLE_ON = "show counts";
 const TITLE_OFF = "hide counts";
 const APPLICABLE_PROTOCOLS = ["http:", "https:"];
@@ -9,11 +8,6 @@ function toggleCSS(tab) {
 
   function gotTitle(title) {
     const isTitleOn = title === TITLE_ON;
-    if (isTitleOn) {
-      browser.tabs.insertCSS({code: CSS});
-    } else {
-      browser.tabs.removeCSS({code: CSS});
-    }
     browser.pageAction.setIcon({tabId: tab.id, path: isTitleOn ? "icons/on.svg" : "icons/off.svg"});
     browser.pageAction.setTitle({tabId: tab.id, title: isTitleOn ? TITLE_OFF : TITLE_ON});
     sessionStorage.setItem("backgroundState" + tab.id, isTitleOn ? TITLE_ON : TITLE_OFF);
@@ -42,11 +36,6 @@ function initializePageAction(tab) {
     }
 
     const isStoredStateOn = storedState === TITLE_ON;
-    if (isStoredStateOn) {
-      browser.tabs.insertCSS({code: CSS});
-    } else {
-      browser.tabs.removeCSS({code: CSS});
-    }
     browser.pageAction.setIcon({tabId: tab.id, path: isStoredStateOn ? "icons/on.svg" : "icons/off.svg"});
     browser.pageAction.setTitle({tabId: tab.id, title: isStoredStateOn ? TITLE_OFF : TITLE_ON});
     browser.pageAction.show(tab.id);

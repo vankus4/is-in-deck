@@ -1,3 +1,5 @@
+const HEADER_HTML = "<th>Deck Presence</th>";
+
 const generateDeckUrl = (searchTerm) => {
     const data = {
       hub: "",
@@ -72,6 +74,11 @@ const getResultsCountFromCard = async (cardName, token) => {
 }
 
 const getBearerToken = async () => {
+    const storedState = sessionStorage.getItem("actionState");
+    if (storedState !== "show counts") {
+        return null;
+    }
+
     try {
         // Send a POST request to the authentication endpoint
         const response = await fetch('https://api2.moxfield.com/v1/startup/authenticated', {
@@ -92,7 +99,7 @@ const getBearerToken = async () => {
         return data.refresh.access_token
     } catch (error) {
         console.error('Error during authentication:', error);
-        return "";
+        return null;
     }
 }
 
@@ -107,24 +114,39 @@ const checkUsage = async (cardName, token) => {
     };
 }
 
-const showDeckCount = async (row, token) => {
-    const anchor = row.querySelectorAll("td")[1]?.querySelectorAll("a")[0];
+const showDeckCount = async (row, token, baseColumnCount) => {
+    const anchor = row.querySelectorAll("td")?.[1]?.querySelectorAll("a")[0];
     const cardName = anchor.firstChild.data;
-    const dots = row.querySelectorAll("td")[10]
-    const {url, label} = await checkUsage(cardName, token);
+    const dots = row.querySelectorAll("td")[baseColumnCount-1]
+    const currentColumnCount = row.querySelectorAll("td")?.length || 0;
+    if (currentColumnCount > baseColumnCount) {
+        row.querySelectorAll("td")[currentColumnCount-1].outerHTML = "<td></td>";
+    }
 
-    // needs insertAdjacentHTML to not break existing click listeners
-    dots.insertAdjacentHTML("afterend", `<td><a target="_blank" href="${url}">${label}</a></td>`);
+    const {url, label} = await checkUsage(cardName, token);
+    const htmlToInsert = `<td><a target="_blank" href="${url}">${label}</a></td>`;
+
+    if (currentColumnCount > baseColumnCount) {
+        row.querySelectorAll("td")[currentColumnCount-1].outerHTML = htmlToInsert;
+    } else {
+        // needs insertAdjacentHTML to not break existing click listeners
+        dots.insertAdjacentHTML("afterend", htmlToInsert);
+    }
 };
 
 const startMutationObserver = async (tbody) => {
     const token = await getBearerToken();
-    // first load
-    const cardRows = tbody.querySelectorAll('tr');
-    cardRows.forEach(row => showDeckCount(row, token));
 
     // extends header so it does not look broken
-    document.querySelector("thead tr")?.querySelectorAll("th")[10]?.insertAdjacentHTML("afterend", "<th>Deck Presence</th>");
+    const baseColumnCount = Array.from(document.querySelector("thead tr")?.querySelectorAll("th")).filter(th => th.outerHTML !== HEADER_HTML).length || 0;
+    const currentColumnCount = document.querySelector("thead tr")?.querySelectorAll("th")?.length || 0;
+    if (currentColumnCount <= baseColumnCount){
+        document.querySelector("thead tr")?.querySelectorAll("th")?.[baseColumnCount-1]?.insertAdjacentHTML("afterend", HEADER_HTML);
+    }
+
+    // first load
+    const cardRows = tbody.querySelectorAll('tr');
+    cardRows.forEach(row => showDeckCount(row, token, baseColumnCount));
 
     // create an observer to inject upon pagination/sort change
     const observer = new MutationObserver(async (mutationsList) => {
@@ -133,7 +155,7 @@ const startMutationObserver = async (tbody) => {
             .forEach((mutation) => {
                 Array.from(mutation.addedNodes).filter(node => node.tagName === 'TR' && node.closest('tbody'))
                     .forEach((node) => {
-                        showDeckCount(node, token);
+                        showDeckCount(node, token, baseColumnCount);
                     });
             });
     });
@@ -153,9 +175,13 @@ const interval = setInterval(() => {
     }
 }, 500);
 
-browser.runtime.onMessage.addListener(message => {
+browser.runtime.onMessage.addListener(async message => {
     if (message.pageActionState){
         sessionStorage.setItem("actionState", message.pageActionState);
+        const token = await getBearerToken();
+        const baseColumnCount = Array.from(document.querySelector("thead tr")?.querySelectorAll("th")).filter(th => th.outerHTML !== HEADER_HTML).length || 0;
+        const cardRows = document.querySelector("tbody").querySelectorAll('tr');
+        cardRows.forEach(row => showDeckCount(row, token, baseColumnCount));
     }
 })
 
