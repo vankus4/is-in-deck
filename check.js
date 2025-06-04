@@ -1,4 +1,8 @@
 const HEADER_HTML = "<th>Deck Presence</th>";
+const TOKEN_OBJECT = {
+    token: "",
+    time: 0
+}
 
 const generateDeckUrl = (searchTerm) => {
     const data = {
@@ -79,6 +83,11 @@ const getBearerToken = async () => {
         return null;
     }
 
+    // return current token if it is fresher than 5 minutes
+    if (TOKEN_OBJECT.time + 1000 * 60 * 5 > Date.now()) {
+        return TOKEN_OBJECT.token;
+    }
+
     try {
         // Send a POST request to the authentication endpoint
         const response = await fetch('https://api2.moxfield.com/v1/startup/authenticated', {
@@ -96,6 +105,8 @@ const getBearerToken = async () => {
 
         const data = await response.json();
 
+        TOKEN_OBJECT.token = data.refresh.access_token;
+        TOKEN_OBJECT.time = Date.now();
         return data.refresh.access_token
     } catch (error) {
         console.error('Error during authentication:', error);
@@ -117,10 +128,18 @@ const checkUsage = async (cardName, token) => {
 const showDeckCount = async (row, token, baseColumnCount) => {
     const anchor = row.querySelectorAll("td")?.[1]?.querySelectorAll("a")[0];
     const cardName = anchor.firstChild.data;
+    if (!cardName) {
+        return;
+    }
     const dots = row.querySelectorAll("td")[baseColumnCount-1]
-    const currentColumnCount = row.querySelectorAll("td")?.length || 0;
+    let currentColumnCount = row.querySelectorAll("td")?.length || 0;
+
+    // insert placeholder while we await the real result
     if (currentColumnCount > baseColumnCount) {
         row.querySelectorAll("td")[currentColumnCount-1].outerHTML = "<td></td>";
+    } else {
+        dots.insertAdjacentHTML("afterend", "<td></td>");
+        currentColumnCount++;
     }
 
     const {url, label} = await checkUsage(cardName, token);
@@ -134,22 +153,28 @@ const showDeckCount = async (row, token, baseColumnCount) => {
     }
 };
 
-const startMutationObserver = async (tbody) => {
-    const token = await getBearerToken();
-
+const initHeader = (baseColumnCount) => {
     // extends header so it does not look broken
-    const baseColumnCount = Array.from(document.querySelector("thead tr")?.querySelectorAll("th")).filter(th => th.outerHTML !== HEADER_HTML).length || 0;
     const currentColumnCount = document.querySelector("thead tr")?.querySelectorAll("th")?.length || 0;
     if (currentColumnCount <= baseColumnCount){
         document.querySelector("thead tr")?.querySelectorAll("th")?.[baseColumnCount-1]?.insertAdjacentHTML("afterend", HEADER_HTML);
     }
+}
+
+const startMutationObserver = async (tbody) => {
+    const token = await getBearerToken();
+
+    const baseColumnCount = Array.from(document.querySelector("thead tr")?.querySelectorAll("th")).filter(th => th.outerHTML !== HEADER_HTML).length || 0;
+    initHeader(baseColumnCount);
 
     // first load
     const cardRows = tbody.querySelectorAll('tr');
     cardRows.forEach(row => showDeckCount(row, token, baseColumnCount));
+    console.log(3);
 
     // create an observer to inject upon pagination/sort change
     const observer = new MutationObserver(async (mutationsList) => {
+        console.log(2);
         const token = await getBearerToken();
         mutationsList.filter(mutation => mutation.type === "childList")
             .forEach((mutation) => {
@@ -178,9 +203,14 @@ const interval = setInterval(() => {
 browser.runtime.onMessage.addListener(async message => {
     if (message.pageActionState){
         sessionStorage.setItem("actionState", message.pageActionState);
+        if (!window.location.pathname.startsWith("/collection")){
+            return;
+        }
         const token = await getBearerToken();
         const baseColumnCount = Array.from(document.querySelector("thead tr")?.querySelectorAll("th")).filter(th => th.outerHTML !== HEADER_HTML).length || 0;
+        initHeader(baseColumnCount);
         const cardRows = document.querySelector("tbody").querySelectorAll('tr');
+        console.log(1);
         cardRows.forEach(row => showDeckCount(row, token, baseColumnCount));
     }
 })

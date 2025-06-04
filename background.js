@@ -39,6 +39,7 @@ function initializePageAction(tab) {
     browser.pageAction.setIcon({tabId: tab.id, path: isStoredStateOn ? "icons/on.svg" : "icons/off.svg"});
     browser.pageAction.setTitle({tabId: tab.id, title: isStoredStateOn ? TITLE_OFF : TITLE_ON});
     browser.pageAction.show(tab.id);
+    browser.tabs.sendMessage(tab.id, {pageActionState: isStoredStateOn ? TITLE_ON : TITLE_OFF});
   }
 }
 
